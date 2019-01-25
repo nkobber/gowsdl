@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -148,6 +149,7 @@ type options struct {
 	auth        *basicAuth
 	timeout     time.Duration
 	httpHeaders map[string]string
+	proxyUrl    *url.URL
 }
 
 var defaultOptions = options{
@@ -182,6 +184,13 @@ func WithTimeout(t time.Duration) Option {
 func WithHTTPHeaders(headers map[string]string) Option {
 	return func(o *options) {
 		o.httpHeaders = headers
+	}
+}
+
+// WithHTTPProxy is an options to set a proxy url used by the HTTP transport
+func WithHTTPProxy(url *url.URL) Option {
+	return func(o *options) {
+		o.proxyUrl = url
 	}
 }
 
@@ -253,6 +262,10 @@ func (s *Client) Call(soapAction string, request, response interface{}) error {
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, s.opts.timeout)
 		},
+	}
+
+	if s.opts.proxyUrl != nil {
+		tr.Proxy = http.ProxyURL(s.opts.proxyUrl)
 	}
 
 	client := &http.Client{Transport: tr}
